@@ -39,7 +39,7 @@
       <artifactId>logback-classic</artifactId>
       <version>1.5.12</version>
     </dependency>
-<!--    picocli for creating CLI of the application-->
+<!--    picocli for creating CLI of the application to interact-->
     <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
