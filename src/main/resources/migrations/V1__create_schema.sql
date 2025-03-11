@@ -5,7 +5,7 @@ CREATE TABLE users (
 );
 
 -- Profiles table (OneToOne with Users)
-CREATE TABLE profiles (
+CREATE TABLE  profiles (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT UNIQUE,
     email VARCHAR(100) NOT NULL,
@@ -41,9 +41,9 @@ CREATE TABLE student_courses (
     FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 
--- Indexes
 CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_profiles_user_id ON profiles(user_id);
+
 
 -- Insert 50 Users
 INSERT INTO users (username) VALUES
