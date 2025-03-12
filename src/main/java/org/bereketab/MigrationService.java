@@ -230,7 +230,7 @@ public class MigrationService {
     public List<Path> getMigrationFiles() throws IOException {
         Path dir = Paths.get("src/main/resources", migrationsDir);
         return Files.list(dir)
-                .filter(path -> path.toString().endsWith(".sql"))
+                .filter(path -> path.toString().endsWith(".sql") && !path.toString().contains("_rollback.sql"))
                 .sorted()
                 .toList();
     }
@@ -281,24 +281,28 @@ public class MigrationService {
     public void rollbackMigration(Connection conn, String version, String filename) throws SQLException, IOException {
         conn.setAutoCommit(false);
         try {
+
             // Look for a rollback script (e.g., V1__create_schema_rollback.sql)
             String rollbackFileName = filename.replace(".sql", "_rollback.sql");
-            Path rollbackPath = Paths.get("src/main/resources", migrationsDir, rollbackFileName);
+            Path rollbackPath = Paths.get("target/test-migrations", rollbackFileName);
+            if (!Files.exists(rollbackPath)){
+                rollbackPath = Paths.get("src/main/resources", migrationsDir, rollbackFileName);
+            }
             if (Files.exists(rollbackPath)) {
                 String rollbackSql = Files.readString(rollbackPath);
                 try (Statement stmt = conn.createStatement()) {
                     stmt.execute(rollbackSql);
                 }
+                String deleteSql = "DELETE FROM migration_history WHERE version = ?";
+                try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+                    deleteStmt.setString(1, version);
+                    deleteStmt.executeUpdate();
+                }
+                conn.commit();
                 logger.info("Executed rollback script: {}", rollbackFileName);
             } else {
                 logger.warn("No rollback script found for {}", filename);
             }
-            String deleteSql = "DELETE FROM migration_history WHERE version = ?";
-            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-                deleteStmt.setString(1, version);
-                deleteStmt.executeUpdate();
-            }
-            conn.commit();
         } catch (SQLException | IOException e) {
             conn.rollback();
             throw e;

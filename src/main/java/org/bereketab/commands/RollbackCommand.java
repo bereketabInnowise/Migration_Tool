@@ -23,7 +23,7 @@ public class RollbackCommand implements Runnable {
     @Override
     public void run() {
         try (Connection conn = service.dataSource.getConnection()) {
-            String sql = "SELECT version, filename FROM migration_history ORDER BY applied_at DESC LIMIT 1";
+            String sql = "SELECT version, file_name FROM migration_history ORDER BY applied_time DESC LIMIT 1";
             String version;
             String filename;
             try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
@@ -32,11 +32,10 @@ public class RollbackCommand implements Runnable {
                     return;
                 }
                 version = rs.getString("version");
-                filename = rs.getString("filename");
+                filename = rs.getString("file_name");
             }
             logger.info("Rolling back: {}", filename);
             service.rollbackMigration(conn, version, filename);
-            logger.info("Rolled back: {}", filename);
         } catch (SQLException | IOException e) {
             logger.error("Rollback failed", e);
             throw new RuntimeException("Rollback failed", e);

@@ -9,7 +9,7 @@ import java.io.IOException;
 
 public class DatabaseConfig {
 //    defining the datasource to establish the connection with the postgresql database. In ,JDBC we may establish connection using the Connection cn = DriverManager.getConnection(url, username, password).
-    private static final HikariDataSource dataSource;
+    public static HikariDataSource dataSource;
 
     static{
         Properties props = new Properties();
