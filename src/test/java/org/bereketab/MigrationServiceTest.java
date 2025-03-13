@@ -1,24 +1,68 @@
 package org.bereketab;
 
 import com.zaxxer.hikari.HikariDataSource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class MigrationServiceTest {
+    @Mock
+    private HikariDataSource dataSource;
+
+    @Mock
+    private Connection connection;
+
+    @Mock
+    private Statement statement;
+
+    @Mock
+    private DatabaseMetaData metaData;
+
+    @Mock
+    private ResultSet resultSet;
+
+    @BeforeEach
+    void setUp() throws SQLException {
+        MockitoAnnotations.openMocks(this);
+        // Mock the full DB interaction chain
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.createStatement()).thenReturn(statement);
+        when(connection.getMetaData()).thenReturn(metaData);
+        when(metaData.getColumns(null, null, "migration_history", null)).thenReturn(resultSet);
+        // Simulate an empty or matching schema (no columns yet)
+        when(resultSet.next()).thenReturn(false); // No existing columns, so table will be created
+        when(resultSet.next())
+                .thenReturn(true) // First column
+                .thenReturn(true) // Second column
+                .thenReturn(true) // Third column
+                .thenReturn(true) // Fourth column
+                .thenReturn(false); // No more columns
+        when(resultSet.getString("COLUMN_NAME"))
+                .thenReturn("version")
+                .thenReturn("file_name")
+                .thenReturn("checksum")
+                .thenReturn("applied_time");
+    }
+
+
     @Test
     void testGetMigrationFiles_filtersRollbackFiles() throws IOException {
-        // Mock MigrationService with a controlled migrationsDir
-        MigrationService service = new MigrationService(mock(HikariDataSource.class)) {
+        MigrationService service = new MigrationService(dataSource) {
             @Override
             public List<Path> getMigrationFiles() throws IOException {
-                // Simulate file system with test data
                 return List.of(
                         Paths.get("src/main/resources/migrations/V1__test.sql"),
                         Paths.get("src/main/resources/migrations/V1__test_rollback.sql"),
@@ -37,11 +81,10 @@ public class MigrationServiceTest {
 
     @Test
     void testCalculateChecksum_consistentOutput() {
-        MigrationService service = new MigrationService(mock(HikariDataSource.class));
+        MigrationService service = new MigrationService(dataSource);
         String sql = "CREATE TABLE test (id INT);";
         String checksum1 = service.calculateChecksum(sql);
         String checksum2 = service.calculateChecksum(sql);
         assertEquals(checksum1, checksum2);
     }
 }
-

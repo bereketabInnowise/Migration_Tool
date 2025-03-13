@@ -1,7 +1,0 @@
-CREATE TABLE migration_history (
-    version VARCHAR(50) PRIMARY KEY,
-    file_name VARCHAR(255) NOT NULL,
-    checksum VARCHAR(64) NOT NULL UNIQUE,
-    applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-
-)

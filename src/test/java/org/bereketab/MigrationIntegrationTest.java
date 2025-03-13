@@ -34,8 +34,7 @@ public class MigrationIntegrationTest {
     static void setup() throws IOException {
         Path migrationsDir = Path.of("target/test-migrations");
         Files.createDirectories(migrationsDir);
-        Files.writeString(migrationsDir.resolve("V0__init_migration_history.sql"),
-                "CREATE TABLE migration_history (version VARCHAR(255) PRIMARY KEY, file_name VARCHAR(255), checksum VARCHAR(255), applied_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
+
         Files.writeString(migrationsDir.resolve("V1__create_users.sql"),
                 "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255));\nINSERT INTO users (name) VALUES ('Test');");
         Files.writeString(migrationsDir.resolve("V1__create_users_rollback.sql"),
@@ -74,6 +73,12 @@ public class MigrationIntegrationTest {
             rs.next();
             assertEquals(1, rs.getInt(1));
         }
+        try (Connection conn = service.dataSource.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM migration_history")) {
+            rs.next();
+            assertEquals(1, rs.getInt(1)); // V1__ applied
+        }
 
         // Rollback V1
         new RollbackCommand(service).run();
@@ -81,7 +86,7 @@ public class MigrationIntegrationTest {
              Statement stmt = conn.createStatement()) {
             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM migration_history");
             rs.next();
-            assertEquals(1, rs.getInt(1)); // After rollback, only V0 remains
+            assertEquals(0, rs.getInt(1)); // After rollback, only V0 remains
             ResultSet rsUsers = stmt.executeQuery("SELECT to_regclass('users')");
             rsUsers.next();
             assertTrue(rsUsers.getObject(1) == null); // Users table is dropped
