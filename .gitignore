@@ -11,7 +11,9 @@ target/
 *.iws
 *.iml
 *.ipr
-*.properties
+# Ignore config files with credentials
+application.properties
+migration.conf
 
 ### Eclipse ###
 .apt_generated
