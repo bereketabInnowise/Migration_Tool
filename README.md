@@ -27,7 +27,7 @@ A lightweight, flexible database migration tool designed for both standalone com
 
 ### For Standalone Use
 
-1. **Download**: Get `migration-tool.zip` from [insert download link or repo].
+1. **Download**: Get `migration-tool.zip` from https://github.com/bereketabInnowise/migration-tool.zip.
 2. **Unzip**: Extract to a directory (e.g., `migration-tool/`).
 3. **Configure**: Edit `migration.conf` with your database details:
    ```plaintext
