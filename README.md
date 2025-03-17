@@ -181,7 +181,7 @@ Embed migrations in your app (e.g., Spring Boot) using your own DataSource.
 ---
 
 ## Building from Source
-- **Clone**: `git clone [your-repo-url]`.
+- **Clone**: `git clone https://github.com/bereketabInnowise/Migration_Tool.git`.
 - **Build**:
 
 ```bash
