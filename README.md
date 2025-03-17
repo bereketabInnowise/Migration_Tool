@@ -203,7 +203,7 @@ mvn clean install
 ---
 
 ## Author
-Bereketab: [bereketab.shanka@innowise.com]—questions or feedback welcome!
+Bereketab: bereketab.shanka@innowise.com questions or feedback welcome!
 
 Happy migrating!
 
