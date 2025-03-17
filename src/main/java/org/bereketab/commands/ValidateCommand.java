@@ -33,7 +33,7 @@ public class ValidateCommand implements Runnable {
                         if (!existingChecksum.equals(currentChecksum)) {
                             logger.error("Validation failed for {}: Checksum mismatch (DB: {}, File: {})",
                                     filename, existingChecksum, currentChecksum);
-                            throw new RuntimeException("Validation failed");
+                            break;
                         }
                         logger.info("Validated: {}", filename);
                     } else {

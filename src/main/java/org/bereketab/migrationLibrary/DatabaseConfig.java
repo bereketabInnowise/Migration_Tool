@@ -1,33 +1,46 @@
 package org.bereketab.migrationLibrary;
-//importing the necessary libraries to build the connection pool
+
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-//import Properties to retrieve data from application.properties
-import java.util.Properties;
-//import IOException to handle the input output exception.
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 public class DatabaseConfig {
-//    defining the datasource to establish the connection with the postgresql database. In ,JDBC we may establish connection using the Connection cn = DriverManager.getConnection(url, username, password).
-    public static HikariDataSource dataSource;
+    private static HikariDataSource dataSource;
 
-    static{
-        Properties props = new Properties();
-        try{
-            props.load(DatabaseConfig.class.getClassLoader().getResourceAsStream("application.properties"));
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load application.properties",e);
+    public static HikariDataSource getDataSource() {
+        if (dataSource == null) {
+            Properties props = new Properties();
+            try (FileInputStream fis = new FileInputStream("migration.conf")) {
+                props.load(fis);
+                System.out.println("Loaded migration.conf from working directory");
+            } catch (IOException e) {
+                try {
+                    props.load(DatabaseConfig.class.getClassLoader().getResourceAsStream("application.properties"));
+                    System.out.println("Loaded application.properties from classpath (fallback)");
+                } catch (IOException ex) {
+                    throw new RuntimeException("Failed to load migration.conf or application.properties. Provide migration.conf in the working directory or application.properties in the classpath.", ex);
+                }
+            }
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(props.getProperty("db.url"));
+            config.setUsername(props.getProperty("db.username"));
+            config.setPassword(props.getProperty("db.password"));
+            config.setDriverClassName(props.getProperty("db.driver", "org.postgresql.Driver"));
+            config.setMaximumPoolSize(20);
+            String url = config.getJdbcUrl();
+            if (url == null || url.trim().isEmpty()) {
+                throw new RuntimeException("db.url is missing or empty in config file");
+            }
+            if (config.getUsername() == null || config.getUsername().trim().isEmpty()) {
+                throw new RuntimeException("db.username is missing or empty in config file");
+            }
+            if (config.getPassword() == null || config.getPassword().trim().isEmpty()) {
+                throw new RuntimeException("db.password is missing or empty in config file");
+            }
+            dataSource = new HikariDataSource(config);
         }
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(props.getProperty("db.url"));
-        config.setUsername(props.getProperty("db.username"));
-        config.setPassword(props.getProperty("db.password"));
-        config.setDriverClassName("org.postgresql.Driver");
-        config.setMaximumPoolSize(20);
-        dataSource = new HikariDataSource(config);
-    }
-    public static HikariDataSource getDataSource(){
         return dataSource;
     }
-
 }
