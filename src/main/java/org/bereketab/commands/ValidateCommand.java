@@ -1,48 +1,63 @@
-package org.bereketab.commands; // Groups this with other CLI commands: organizes your project.
+package org.bereketab.commands;
 
-import org.bereketab.MigrationService; // Connects to the migration logic: uses its methods for validation.
-import org.slf4j.Logger; // For logging (covered elsewhere).
-import org.slf4j.LoggerFactory; // Creates the logger (covered elsewhere).
-import picocli.CommandLine.Command; // Marks this as a CLI subcommand: ties to PicoCLI.
-import java.io.IOException; // Handles file read errors: e.g., missing migration files.
-import java.nio.file.Files; // Reads file contents: loads SQL for checksum calculation.
-import java.nio.file.Path; // Represents migration file paths: from getMigrationFiles().
-import java.sql.Connection; // DB connection: checks migration history.
-import java.sql.SQLException; // Catches DB errors: e.g., connection issues.
+import org.bereketab.MigrationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import picocli.CommandLine.Command;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.SQLException;
 
-@Command(name = "validate", description = "Validate applied migrations against files") // Defines this as the `validate` subcommand: tells PicoCLI its purpose (e.g., `migration-tool validate`).
-public class ValidateCommand implements Runnable { // Implements Runnable: PicoCLI calls run() when `validate` is executed.
-    private final Logger logger = LoggerFactory.getLogger(ValidateCommand.class); // Logger for this class: logs validation events (setup covered elsewhere).
-    private final MigrationService service; // Holds MigrationService: uses its dataSource and methods for DB checks.
+@Command(name = "validate", description = "Validate applied migrations against files")
+public class ValidateCommand implements Runnable {
+    private final Logger logger = LoggerFactory.getLogger(ValidateCommand.class);
+    private final MigrationService service;
 
-    public ValidateCommand(MigrationService service) { // Constructor: links this command to the shared migration service.
-        this.service = service; // Stores the service: ensures consistent DB access.
+    public ValidateCommand(MigrationService service) {
+        this.service = service;
     }
 
     @Override
-    public void run() { // Entry point: runs when `validate` is called, checks migration integrity.
+    public void run() {
         try {
-            for (Path file : service.getMigrationFiles()) { // Loops through migration files: validates each against DB history.
-                String filename = file.getFileName().toString(); // Gets the filename: e.g., "V1__create_schema.sql" for logging.
-                String version = filename.split("__")[0]; // Extracts version: e.g., "V1": matches against migration_history.
-                try (Connection conn = service.dataSource.getConnection()) { // Opens a DB connection: scoped for this check, auto-closes.
-                    if (service.isMigrationApplied(conn, version)) { // Checks if migration ran: only validates applied ones.
-                        String existingChecksum = service.getExistingChecksum(conn, version); // Fetches stored checksum: what’s in the DB.
-                        String currentChecksum = service.calculateChecksum(Files.readString(file)); // Computes current file’s checksum: checks against DB.
-                        if (!existingChecksum.equals(currentChecksum)) { // Compares checksums: detects if file changed post-application.
-                            logger.error("Validation failed for {}: Checksum mismatch (DB: {}, File: {})",
-                                    filename, existingChecksum, currentChecksum); // Logs failure: alerts user to mismatch, shows both values.
-                            break; // Stops validation: first failure halts process (could continue if you want all errors).
-                        }
-                        logger.info("Validated: {}", filename); // Logs success: confirms this migration matches its DB record.
-                    } else {
-                        logger.warn("Migration {} in files but not applied", filename); // Warns if file exists but isn’t in DB: hints at pending migrations.
-                    }
+            for (Path file : service.getMigrationFiles()) {
+                if (!validateMigrationFile(file)) {
+                    // Stop on first validation failure
+                    break;
                 }
             }
-        } catch (IOException | SQLException e) { // Catches errors: e.g., file read failure (IOException) or DB issue (SQLException).
-            logger.error("Validation failed", e); // Logs the error: helps debug what broke.
-            throw new RuntimeException("Validation failed", e); // Stops the command: returns error code to CLI.
+        } catch (IOException | SQLException e) {
+
+            logger.error("Validation failed", e);
+            throw new RuntimeException("Validation failed", e);
         }
+    }
+
+    private boolean validateMigrationFile(Path file) throws IOException, SQLException {
+        String filename = file.getFileName().toString();
+        String version = filename.split("__")[0];
+        try (Connection conn = service.dataSource.getConnection()) {
+            if (service.isMigrationApplied(conn, version)) {
+                return compareChecksums(conn, version, filename, file);
+            } else {
+                logger.warn("Migration {} in files but not applied", filename);
+                return true;
+            }
+        }
+    }
+
+    private boolean compareChecksums(Connection conn, String version, String filename, Path file) throws IOException, SQLException {
+        String existingChecksum = service.getExistingChecksum(conn, version);
+        String currentChecksum = service.calculateChecksum(Files.readString(file));
+        if (!existingChecksum.equals(currentChecksum)) {
+            // Log mismatch to alert user of file changes
+            logger.error("Validation failed for {}: Checksum mismatch (DB: {}, File: {})",
+                    filename, existingChecksum, currentChecksum);
+            return false;
+        }
+        logger.info("Validated: {}", filename);
+        return true;
     }
 }
