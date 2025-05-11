@@ -2,8 +2,8 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: bereketab
-      POSTGRES_PASSWORD: bereketabInnowise
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
       POSTGRES_DB: mydb
     ports:
       - "5432:5432"
